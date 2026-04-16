@@ -124,7 +124,7 @@ int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len)
     memcpy(buf, header, header_len);
     memcpy(buf + header_len, data, len);
 
-    // SHA256
+    // SHA256// Compute SHA-256 over (header + data) to produce ObjectID
     SHA256(buf, total, id_out->hash);
 
     char hex[HASH_HEX_SIZE + 1];
@@ -231,6 +231,7 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
 
     // Integrity check
     unsigned char verify[SHA256_DIGEST_LENGTH];
+    
     SHA256(buf, size, verify);
 
     if (memcmp(verify, id->hash, SHA256_DIGEST_LENGTH) != 0) {
