@@ -48,6 +48,11 @@ int hex_to_hash(const char *hex, ObjectID *id_out);
 // PES-VCS reads the author name from the environment variable PES_AUTHOR.
 // If unset, it defaults to "PES User <pes@localhost>".
 //
+// ─── Object Store API ───────────────────────────────────────────────
+int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out);
+int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_t *len_out);
+int object_exists(const ObjectID *id);
+void object_path(const ObjectID *id, char *path_out, size_t path_size);
 // To set your name:
 //   export PES_AUTHOR="Your Name <PESXUG24CS042>"
 
