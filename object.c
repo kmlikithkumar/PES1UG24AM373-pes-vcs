@@ -104,49 +104,54 @@ int object_exists(const ObjectID *id) {
 
 //
 // Returns 0 on success, -1 on error.
+#include <unistd.h>
+#include <sys/stat.h>
+
 int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out)
 {
     /* Object format:
- * "<type> <size>\0<data>"
- * We hash (header + data) using SHA-256 to get a content-addressable ID.
- * Same content → same hash → deduplication.
- */
-char header[64];
-int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len) + 1;
+     * "<type> <size>\0<data>"
+     * Hash is computed over (header + data)
+     */
+
     char header[64];
     int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len) + 1;
 
-    // Full object
+    // 🔴 Validate header length
+    if (header_len <= 1 || header_len >= (int)sizeof(header)) {
+        return -1;
+    }
+
     size_t total = (size_t)header_len + len;
+
     unsigned char *buf = malloc(total);
     if (!buf) return -1;
 
     memcpy(buf, header, header_len);
     memcpy(buf + header_len, data, len);
 
-    // SHA256// Compute SHA-256 over (header + data) to produce ObjectID
+    // 🔴 Compute hash
     SHA256(buf, total, id_out->hash);
 
     char hex[HASH_HEX_SIZE + 1];
     hash_to_hex(id_out, hex);
 
-    // 🔧 FIX: larger buffers
     char dir[512], path[1024];
     snprintf(dir, sizeof(dir), ".pes/objects/%.2s", hex);
     snprintf(path, sizeof(path), "%s/%s", dir, hex + 2);
 
-    // Ensure dirs
+    // Create directories
     mkdir(".pes", 0755);
     mkdir(".pes/objects", 0755);
     mkdir(dir, 0755);
 
-    // Dedup
+    // 🔴 Deduplication
     if (access(path, F_OK) == 0) {
         free(buf);
         return 0;
     }
 
-    // Temp write
+    // Temp file
     char tmp[1200];
     snprintf(tmp, sizeof(tmp), "%s.tmp", path);
 
@@ -156,18 +161,25 @@ int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len)
         return -1;
     }
 
+    // 🔴 Write validation
     if (fwrite(buf, 1, total, f) != total) {
         fclose(f);
         free(buf);
         return -1;
     }
 
-    fflush(f);
-    fsync(fileno(f));
+    // 🔴 Flush + sync validation
+    if (fflush(f) != 0 || fsync(fileno(f)) != 0) {
+        fclose(f);
+        free(buf);
+        return -1;
+    }
+
     fclose(f);
 
-    // Atomic rename
+    // 🔴 Atomic rename
     if (rename(tmp, path) != 0) {
+        remove(tmp);   // cleanup temp file
         free(buf);
         return -1;
     }
@@ -175,7 +187,6 @@ int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len)
     free(buf);
     return 0;
 }
-
 
 // Read an object from the store.
 //
