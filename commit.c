@@ -202,6 +202,7 @@ int commit_create(const char *message, ObjectID *commit_id_out)
     if (tree_from_index(&tree_id) != 0) {
         return -1;
     }
+    // Link commit to tree snapshot using tree hash
 
     // 2. Read parent (HEAD)
     ObjectID parent_id;
