@@ -207,6 +207,7 @@ int commit_create(const char *message, ObjectID *commit_id_out)
     // 2. Read parent (HEAD)
     ObjectID parent_id;
     int has_parent = (head_read(&parent_id) == 0);
+    // Read parent commit from HEAD if exists
 
     char tree_hex[HASH_HEX_SIZE + 1];
     hash_to_hex(&tree_id, tree_hex);
