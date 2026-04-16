@@ -147,6 +147,7 @@ int tree_from_index(ObjectID *id_out)
         return -1;
     }
 
+    // 🔴 Validate empty index
     if (index.count == 0) {
         return -1;
     }
@@ -156,15 +157,26 @@ int tree_from_index(ObjectID *id_out)
 
     // 2. Convert index → tree entries
     for (int i = 0; i < index.count; i++) {
+
+        // 🔴 Prevent overflow
+        if (tree.count >= MAX_TREE_ENTRIES) {
+            return -1;
+        }
+
         TreeEntry *e = &tree.entries[tree.count];
 
         strncpy(e->name, index.entries[i].path, sizeof(e->name));
-        e->name[sizeof(e->name) - 1] = '\0';
+        e->name[sizeof(e->name) - 1] = '\0';   // safety
 
         e->mode = index.entries[i].mode;
         e->hash = index.entries[i].hash;
 
         tree.count++;
+    }
+
+    // 🔴 Final validation before serialize
+    if (tree.count == 0) {
+        return -1;
     }
 
     // 3. Serialize tree
@@ -175,7 +187,7 @@ int tree_from_index(ObjectID *id_out)
         return -1;
     }
 
-    // 🔴 CRITICAL: write tree object
+    // 4. Write tree object
     if (object_write(OBJ_TREE, data, len, id_out) != 0) {
         free(data);
         return -1;
