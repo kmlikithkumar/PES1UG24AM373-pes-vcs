@@ -219,6 +219,7 @@ int commit_create(const char *message, ObjectID *commit_id_out)
 
     const char *author = pes_author();
     long now = time(NULL);
+    // Include author and timestamp metadata in commit
 
     char buffer[2048];
 
