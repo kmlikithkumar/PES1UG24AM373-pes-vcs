@@ -166,8 +166,7 @@ int tree_from_index(ObjectID *id_out)
         TreeEntry *e = &tree.entries[tree.count];
 
         strncpy(e->name, index.entries[i].path, sizeof(e->name));
-        e->name[sizeof(e->name) - 1] = '\0';   // safety
-
+        e->name[sizeof(e->name) - 1] = '\0';   // ensure null termination
         e->mode = index.entries[i].mode;
         e->hash = index.entries[i].hash;
 
