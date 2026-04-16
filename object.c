@@ -229,9 +229,8 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
     }
     fclose(f);
 
-    // Integrity check
+    // 🔴 Integrity check
     unsigned char verify[SHA256_DIGEST_LENGTH];
-    
     SHA256(buf, size, verify);
 
     if (memcmp(verify, id->hash, SHA256_DIGEST_LENGTH) != 0) {
@@ -239,20 +238,27 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
         return -1;
     }
 
-    // Parse header
+    // 🔴 Header parsing validation
     char *null = memchr(buf, '\0', size);
     if (!null) {
+        free(buf);
+        return -1;   // malformed object
+    }
+
+    size_t header_len = (null - (char *)buf) + 1;
+
+    // 🔴 CRITICAL FIX: bounds check
+    if (header_len >= (size_t)size) {
         free(buf);
         return -1;
     }
 
-    size_t header_len = null - (char *)buf + 1;
-
-    if (strncmp((char *)buf, "blob", 4) == 0)
+    // 🔴 Type detection (strict)
+    if (strncmp((char *)buf, "blob ", 5) == 0)
         *type_out = OBJ_BLOB;
-    else if (strncmp((char *)buf, "tree", 4) == 0)
+    else if (strncmp((char *)buf, "tree ", 5) == 0)
         *type_out = OBJ_TREE;
-    else if (strncmp((char *)buf, "commit", 6) == 0)
+    else if (strncmp((char *)buf, "commit ", 7) == 0)
         *type_out = OBJ_COMMIT;
     else {
         free(buf);
@@ -260,6 +266,14 @@ int object_read(const ObjectID *id, ObjectType *type_out, void **data_out, size_
     }
 
     size_t data_len = size - header_len;
+
+    // 🔴 CRITICAL FIX: avoid zero-size malloc ambiguity
+    if (data_len == 0) {
+        *data_out = NULL;
+        *len_out = 0;
+        free(buf);
+        return 0;
+    }
 
     void *data = malloc(data_len);
     if (!data) {
