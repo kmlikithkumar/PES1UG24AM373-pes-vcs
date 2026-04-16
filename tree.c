@@ -175,9 +175,9 @@ int tree_from_index(ObjectID *id_out)
 
     // 🔴 Final validation before serialize
     if (tree.count == 0) {
-        return -1;
-    }
-
+    return -1;
+}
+   
     // 3. Serialize tree
     void *data;
     size_t len;
