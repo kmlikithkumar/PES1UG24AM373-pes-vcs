@@ -17,6 +17,17 @@
 #include <unistd.h>
 #include <openssl/evp.h>
 
+// ---------- Helpers ----------
+
+static const char *type_str(ObjectType type) {
+    switch (type) {
+        case OBJ_BLOB:   return "blob";
+        case OBJ_TREE:   return "tree";
+        case OBJ_COMMIT: return "commit";
+        default:         return "unknown";
+    }
+}
+
 // ─── PROVIDED ────────────────────────────────────────────────────────────────
 
 void hash_to_hex(const ObjectID *id, char *hex_out) {
