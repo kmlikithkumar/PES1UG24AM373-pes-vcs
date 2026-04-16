@@ -148,8 +148,13 @@ int index_load(Index *index)
     index->count = 0;
 
     while (1) {
-        IndexEntry *e = &index->entries[index->count];
 
+    // Prevent overflow
+    if (index->count >= MAX_INDEX_ENTRIES) {
+        break;
+    }
+
+    IndexEntry *e = &index->entries[index->count];
         char hash_hex[HASH_HEX_SIZE + 1];
 
         int read = fscanf(f, "%o %s %s\n",
