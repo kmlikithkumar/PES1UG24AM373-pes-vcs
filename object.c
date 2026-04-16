@@ -106,7 +106,13 @@ int object_exists(const ObjectID *id) {
 // Returns 0 on success, -1 on error.
 int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out)
 {
-    // Header: "type size\0"
+    /* Object format:
+ * "<type> <size>\0<data>"
+ * We hash (header + data) using SHA-256 to get a content-addressable ID.
+ * Same content → same hash → deduplication.
+ */
+char header[64];
+int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len) + 1;
     char header[64];
     int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len) + 1;
 
