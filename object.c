@@ -104,11 +104,72 @@ int object_exists(const ObjectID *id) {
 
 //
 // Returns 0 on success, -1 on error.
-int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out) {
-    // TODO: Implement
-    (void)type; (void)data; (void)len; (void)id_out;
-    return -1;
+int object_write(ObjectType type, const void *data, size_t len, ObjectID *id_out)
+{
+    // Header: "type size\0"
+    char header[64];
+    int header_len = snprintf(header, sizeof(header), "%s %zu", type_str(type), len) + 1;
+
+    // Full object
+    size_t total = (size_t)header_len + len;
+    unsigned char *buf = malloc(total);
+    if (!buf) return -1;
+
+    memcpy(buf, header, header_len);
+    memcpy(buf + header_len, data, len);
+
+    // SHA256
+    SHA256(buf, total, id_out->hash);
+
+    char hex[HASH_HEX_SIZE + 1];
+    hash_to_hex(id_out, hex);
+
+    // 🔧 FIX: larger buffers
+    char dir[512], path[1024];
+    snprintf(dir, sizeof(dir), ".pes/objects/%.2s", hex);
+    snprintf(path, sizeof(path), "%s/%s", dir, hex + 2);
+
+    // Ensure dirs
+    mkdir(".pes", 0755);
+    mkdir(".pes/objects", 0755);
+    mkdir(dir, 0755);
+
+    // Dedup
+    if (access(path, F_OK) == 0) {
+        free(buf);
+        return 0;
+    }
+
+    // Temp write
+    char tmp[1200];
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+
+    FILE *f = fopen(tmp, "wb");
+    if (!f) {
+        free(buf);
+        return -1;
+    }
+
+    if (fwrite(buf, 1, total, f) != total) {
+        fclose(f);
+        free(buf);
+        return -1;
+    }
+
+    fflush(f);
+    fsync(fileno(f));
+    fclose(f);
+
+    // Atomic rename
+    if (rename(tmp, path) != 0) {
+        free(buf);
+        return -1;
+    }
+
+    free(buf);
+    return 0;
 }
+
 
 // Read an object from the store.
 //
